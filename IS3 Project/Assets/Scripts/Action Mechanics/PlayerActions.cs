@@ -27,7 +27,7 @@ public class PlayerActions : MonoBehaviour
 
     [Header("Look")]
     public InputAction lookAction; public bool canLook = true;
-    public GameObject[] playerCameras; 
+    public GameObject[] playerCameras; public GameObject playerCamera;
     /*Element 0 → First Person Camera
     Element 1 → Third Person Camera
     Element 2 → SideScroller Camera*/
@@ -39,7 +39,7 @@ public class PlayerActions : MonoBehaviour
     public InputAction jumpAction;
     private float jumpHeight = 1.5f;
     private float gravity = -9.81f;
-    private Vector3 verticalVelocity;
+    private float verticalVelocity;
 
     [Header("User Interaction Actions")]
     public InputAction attackAction, interactAction, cursorToggleAction;
@@ -196,7 +196,11 @@ public class PlayerActions : MonoBehaviour
         moveMode = mode;
         
         for (int i = 0; i < playerCameras.Length; i++){
-            playerCameras[i].SetActive(i == (int)moveMode);}
+            if (i == (int)moveMode){
+                playerCameras[i].SetActive(true);
+                playerCamera = playerCameras[i];}
+             else playerCameras[i].SetActive(false);
+        }
 
         switch (moveMode)
         {
