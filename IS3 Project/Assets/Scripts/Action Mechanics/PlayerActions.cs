@@ -9,12 +9,15 @@ using UnityEngine.InputSystem.Interactions;
 public class PlayerActions : MonoBehaviour
 {
 
-    public PlayerInput playerInput;
-    private List<InputAction> activityActions = new List<InputAction>();
+    public PlayerInput playerInput; 
+    private List<InputAction> activePlayerActions = new List<InputAction>();
+    public bool playerActive;
 
     [Header("Move")]
-    public InputAction moveAction; public CharacterController characterController;
+    public InputAction moveAction; private Vector2 moveInput;
+    public CharacterController characterController;
     public float moveSpeed = 3; [SerializeField] float baseMoveSpeed = 3;
+    public enum MoveMode {Classic = 0, ThirdPerson =1, SideScroller = 2} public MoveMode moveMode = MoveMode.Classic;
 
     [Header("Sprint")]
     public InputAction sprintAction;
@@ -24,31 +27,27 @@ public class PlayerActions : MonoBehaviour
 
     [Header("Look")]
     public InputAction lookAction; public bool canLook = true;
-    public GameObject playerCamera;
+    public GameObject[] playerCameras; 
+    /*Element 0 → First Person Camera
+    Element 1 → Third Person Camera
+    Element 2 → SideScroller Camera*/
     [SerializeField] private float lookSensitivityDefault = .5f; public float lookSensitivity;
     public float upDownRange = 80.0f;
     private float yRotation;
 
     [Header("Jump")]
     public InputAction jumpAction;
-    public float jumpSpeed = 3.0f;
-    public float gravity = 10.0f;
-    private Vector3 movingDirection = Vector3.zero;
-
-    [Header("Fly")]
-    public bool flyingAllowed = true, isFlying; //public CharAnimations charAnimations;
-    public event Action<bool> OnFlyingToggled; public bool G_Effective = true;
+    private float jumpHeight = 1.5f;
+    private float gravity = -9.81f;
+    private Vector3 verticalVelocity;
 
     [Header("User Interaction Actions")]
-    public InputAction attackAction, interactAction;
-    public GameObject cursorObj; public bool cursorLocked = true;
+    public InputAction attackAction, interactAction, cursorToggleAction;
+    public GameObject crosshairObj; public bool cursorLocked = true; 
+    public bool cursorToggleable = true;
 
     [Header("UI Interaction Actions")]
     public InputAction previousAction, nextAction;
-
-    [Header("Stored Positions")]
-    public Vector3 startTutPos; public float startTutRotY;
-
 
     // Start is called before the first frame update
     void Awake()
@@ -59,7 +58,6 @@ public class PlayerActions : MonoBehaviour
         moveAction = playerInput.actions.FindAction("Move");
         lookAction = playerInput.actions.FindAction("Look");
         jumpAction = playerInput.actions.FindAction("Jump");
-            jumpAction.performed += OnJumpFlyPerformed;
 
         //Movement Modifiers
         sprintAction = playerInput.actions.FindAction("Sprint");
@@ -67,6 +65,7 @@ public class PlayerActions : MonoBehaviour
         //Interaction
         attackAction = playerInput.actions.FindAction("Attack");
         interactAction = playerInput.actions.FindAction("Interact");
+        cursorToggleAction = playerInput.actions.FindAction("Cursor Toggle");
 
         //UI
         previousAction = playerInput.actions.FindAction("Previous");
@@ -79,87 +78,93 @@ public class PlayerActions : MonoBehaviour
     {
         sprintStamina = maxSprintStamina;
         lookSensitivity = lookSensitivityDefault;
- 
-        activityActions.AddRange( new InputAction[]{
-            
-            //Movement
-            moveAction, lookAction, jumpAction, 
 
+        activePlayerActions.AddRange(new InputAction[]{
+            //Movement
+            moveAction, jumpAction,
             //Movement Modifiers
             sprintAction,
-
             //Interaction
-            attackAction, interactAction,
-
-            //UI
-            previousAction, nextAction
-        
-        });
-
-        //temp:
-        transform.position = startTutPos; transform.eulerAngles = new Vector3(0,startTutRotY,0);
+            attackAction, interactAction, cursorToggleAction
+        }); 
+        PlayerActive(true);
     }
 
 
     // Update is called once per frame
     void Update()
     {
-        Move();
-        Sprint();
-        if (canLook) Look();
-        //cursorToggle();
+        if (playerActive)
+        {
+            moveInput = moveAction.ReadValue<Vector2>();
+            Sprint(); Move();
+            if (canLook) Look();
 
-        ApplyGravity();
-
+            if (cursorToggleable && cursorToggleAction.WasPressedThisFrame())
+            SetCursorMode(!cursorLocked);
+        } 
     }
 
-    public void ToggleActions(bool thing)
-    {   
-        foreach (var a in activityActions)
-            {if (thing) a.Enable(); else a.Disable();}
-            
-        canLook = thing;
-
-        if (thing)
+    public void PlayerActive(bool enabled)
+    {
+        playerActive = enabled;
+        foreach (var a in activePlayerActions)
         {
-            Cursor.lockState = cursorLocked ? CursorLockMode.Locked : CursorLockMode.None;
-            cursorObj.SetActive(cursorLocked); 
-            if (!cursorLocked) lookAction.Disable(); else lookAction.Enable();
+            if (enabled) a.Enable();
+            else a.Disable();
+        }
+
+        SetCursorMode(!enabled);       
+    }
+
+    public void SetCursorMode(bool locked)
+    {
+        cursorLocked = locked;
+
+        if (locked)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+            lookAction.Enable(); crosshairObj.SetActive(true);
+            canLook = true;
         }
         else
         {
-            lookAction.Disable();
             Cursor.lockState = CursorLockMode.None;
-            cursorObj.SetActive(false); 
-        }    
+            Cursor.visible = true; crosshairObj.SetActive(false);
+            lookAction.Disable();
+            canLook = false;
+        }
     }
 
     void Move()
     {
-        Vector3 moveInput = moveAction.ReadValue<Vector3>() * moveSpeed;
-        Vector3 horizontalMovement = new Vector3(moveInput.x, 0, moveInput.z);
-        horizontalMovement = transform.rotation * horizontalMovement;
+        Vector3 movement = transform.rotation * new Vector3(moveInput.x, 0, moveInput.y) * moveSpeed;
 
-        //flight
-        if (isFlying)
+        if (moveMode == MoveMode.SideScroller)movement.z = 0;
+
+        // jumping
+        if (characterController.isGrounded)
         {
-            float verticalInput = -moveInput.y;
-            movingDirection.y += verticalInput * moveSpeed * Time.deltaTime;
-            movingDirection.y = Mathf.Clamp(movingDirection.y, -moveSpeed, moveSpeed);
+            if (verticalVelocity < 0)
+                verticalVelocity = -2f;
 
-            Vector3 move = horizontalMovement + Vector3.up * movingDirection.y;
-            characterController.Move(move * Time.deltaTime);
-        } else {
-            //move the character
-            characterController.Move(horizontalMovement * Time.deltaTime);
+            if (jumpAction.WasPressedThisFrame())
+            {
+                verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
         }
+        verticalVelocity += gravity * Time.deltaTime;
+
+        //final
+        movement.y = verticalVelocity;
+        characterController.Move(movement * Time.deltaTime);
     }
 
     void Sprint()
     {
-        if (isFlying) return;
-        bool sprinting = sprintAction.IsPressed() /*&& sprintStamina > 0*/ &&
-                        (Input.GetAxisRaw("Horizontal") != 0 || Input.GetAxisRaw("Vertical") != 0);
+        bool sprinting = sprintAction.IsPressed() /*&& sprintStamina > 0*/ 
+                            && moveInput.sqrMagnitude > 0.01f;
 
         moveSpeed = sprinting ? baseMoveSpeed * 2.5f : baseMoveSpeed;
         /*
@@ -172,74 +177,37 @@ public class PlayerActions : MonoBehaviour
     {
         Vector2 lookInput = lookAction.ReadValue<Vector2>();
 
-        float xRotation = lookInput.x * lookSensitivity * Time.deltaTime * 100;
+        float xRotation = lookInput.x * lookSensitivity;
         transform.Rotate(0, xRotation, 0);
 
-        yRotation -= lookInput.y * lookSensitivity * Time.deltaTime * 100;
+        yRotation -= lookInput.y * lookSensitivity;
         yRotation = Mathf.Clamp(yRotation, -upDownRange, upDownRange);
         playerCamera.transform.localRotation = Quaternion.Euler(yRotation, 0, 0);
     }
 
-    public void cursorToggle(bool fromOuterScript = false)
+    public void SpawnPlayerAt(Vector3 pos, float yRot)
     {
-        Debug.Log($"<color=orange> You have somehow triggered a cursorToggle. </color>");
-        /*
-        if (cursorToggleAction.WasPressedThisFrame() || fromOuterScript)
-        {
-            bool isActive = cursorObj.activeSelf;
-            cursorObj.SetActive(!isActive);
-
-            if (isActive)
-            { Cursor.lockState = CursorLockMode.None; lookAction.Disable(); cursorLocked = false;}
-            else { Cursor.lockState = CursorLockMode.Locked; lookAction.Enable(); cursorLocked = true;}
-        }*/
+        //do a SpawnPlayerAt({start position},{start y rotation}) in Event Manager
+        transform.position = pos; transform.eulerAngles = new Vector3(0, yRot, 0);
     }
 
-    private void OnJumpFlyPerformed(InputAction.CallbackContext context)
+    public void SetMoveMode(MoveMode mode)
     {
-        Debug.Log($"[JUMPFLY DEBUG] Interaction = {context.interaction?.GetType().Name}");
+        moveMode = mode;
+        
+        for (int i = 0; i < playerCameras.Length; i++){
+            playerCameras[i].SetActive(i == (int)moveMode);}
 
-        if (context.interaction is TapInteraction)
+        switch (moveMode)
         {
-            if (characterController.isGrounded)
-            {
-                if (isFlying) return;
-                movingDirection.y = jumpSpeed;
-            }
-        }
-        else if (context.interaction is MultiTapInteraction)
-        {   if (!flyingAllowed) return;
-        //charAnimations.WingAnimCall();
-            
-            if (isFlying)
-            {
-                Debug.Log("flying off");
-                isFlying = false; 
-            }
-            else
-            {
-                Debug.Log("flying initiated");
-                isFlying = true; 
-                movingDirection.y += jumpSpeed*2;
-            }
+            case MoveMode.Classic:
+            cursorToggleable = true;
+                break;
 
-            OnFlyingToggled?.Invoke(isFlying);
+            case MoveMode.SideScroller:
+                SetCursorMode(false); cursorToggleable = false;
+                break;
         }
-    }
-
-    void ApplyGravity()
-    {
-        if (!isFlying)
-        {
-            if (!characterController.isGrounded)
-                movingDirection.y -= gravity * Time.deltaTime;
-        }
-        else
-        {
-            if (G_Effective) movingDirection.y -= (gravity * 0.05f) * Time.deltaTime;
-        }
-
-        characterController.Move(movingDirection * Time.deltaTime);
     }
 
 }
