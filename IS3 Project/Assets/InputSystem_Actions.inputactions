@@ -1074,6 +1074,35 @@
                     "isPartOfComposite": false
                 }
             ]
+        },
+        {
+            "name": "Testing",
+            "id": "c8b4fae9-75db-4714-9f79-8d55704967c6",
+            "actions": [
+                {
+                    "name": "DragTest",
+                    "type": "Button",
+                    "id": "8a75a065-ba03-4fdf-b4c8-40329f4f2eec",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "Hold",
+                    "initialStateCheck": false,
+                    "priority": 0
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "22be6982-e1cb-4e07-b228-12fef4013d90",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "DragTest",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
         }
     ],
     "controlSchemes": [
