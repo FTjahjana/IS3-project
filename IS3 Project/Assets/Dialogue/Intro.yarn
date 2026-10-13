@@ -1,0 +1,10 @@
+﻿title: Start
+---
+This is an example of a Yarn Spinner script. Write your dialogue here!
+
+IVR Greeting: Ho, ho, ho! How may I help you? Press 1 to (insert stuff here), 2 for (insert stuff here), ...
+-> 2497249 (random staff code i suppose)
+    Another Character: Ah, hey there. Who's this?
+    -> It's... (select char)
+
+===

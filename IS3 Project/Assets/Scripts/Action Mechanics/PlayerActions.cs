@@ -1,3 +1,9 @@
+/*NOTES:
+- (NON_PRIORITY) Add Lerp/ some kinda transition between POVs when switching.
+- Lock Looking in 3POV.
+*/
+
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -190,7 +196,7 @@ public class PlayerActions : MonoBehaviour
         //do a SpawnPlayerAt({start position},{start y rotation}) in Event Manager
         transform.position = pos; transform.eulerAngles = new Vector3(0, yRot, 0);
     }
-
+    
     public void SetMoveMode(MoveMode mode)
     {
         moveMode = mode;
@@ -213,5 +219,21 @@ public class PlayerActions : MonoBehaviour
                 break;
         }
     }
+    [ContextMenu("Set Move Mode/Classic")]
+    private void TriggerMoveModeClassic()
+    {
+        SetMoveMode(MoveMode.Classic);
+    }
 
+    [ContextMenu("Set Move Mode/3rd Person")]
+    private void TriggerMoveMode3POV()
+    {
+        SetMoveMode(MoveMode.ThirdPerson);
+    }
+
+    [ContextMenu("Set Move Mode/SideScroller")]
+    private void TriggerMoveModeSideScroller()
+    {
+        SetMoveMode(MoveMode.SideScroller);
+    }
 }
