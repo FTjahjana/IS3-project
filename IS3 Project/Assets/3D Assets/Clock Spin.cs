@@ -4,26 +4,27 @@ using UnityEngine.Animations;
 
 public class ClockSpin : MonoBehaviour
 {
-    public enum Hand {Hour, Minute}
+    public enum Hand { Hour, Minute }
     [SerializeField] Hand hand;
-    float multiplier = 60; [SerializeField] float GameTimeConstant = 60;
+    float multiplier = 60; [SerializeField] float GameTimeConstant = 60f;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        /*if (hand == Hand.Hour)
+        if (hand == Hand.Hour)
         {
             //edit GameTimeConstant with GameManager.GameTimeConstant or something when that happens
-            multiplier = 5/60/60 *GameTimeConstant;
+            multiplier = 0.5f * GameTimeConstant; // (360/12 = 30deg)/min
         }
 
-        else { multiplier = 1/60 *GameTimeConstant;}*/
-        
+        else { multiplier = 6f * GameTimeConstant; } // 360deg/min
+
     }
 
     // Update is called once per frame
     void Update()
     {
-        transform.Rotate (0,multiplier*Time.deltaTime,0);
+        float dpm;
+        transform.Rotate(0f, 0f, multiplier * Time.deltaTime, Space.Self);
     }
 }

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Example : MonoBehaviour
+public class GearSpinRB : MonoBehaviour
 {
     Rigidbody rb;
     public float speed = 20f;
@@ -15,7 +15,6 @@ public class Example : MonoBehaviour
     {
 
         rb.AddTorque(Vector3.up * speed, ForceMode.Impulse);
-        rb.transform.Rotate(new Vector3(0, 0, speed), Space.Self);
 
     }
 }
